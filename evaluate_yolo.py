@@ -1,7 +1,7 @@
 """
-YOLOv8 Raw Detection Evaluation Script.
+YOLO Raw Detection Evaluation Script.
 
-This module processes a video using only the YOLOv8 model to visualize
+This module processes a video using only the YOLO model to visualize
 the raw bounding boxes, classes, and confidence scores. It is intended
 for debugging model accuracy before passing detections to a tracker.
 """
@@ -15,7 +15,7 @@ from ultralytics import YOLO
 
 def parse_arguments() -> argparse.Namespace:
     """Parses command-line arguments for the evaluation pipeline."""
-    parser = argparse.ArgumentParser(description="Evaluate raw YOLOv8 detections on a video.")
+    parser = argparse.ArgumentParser(description="Evaluate raw YOLO detections on a video.")
     
     parser.add_argument(
         "--input", 
@@ -33,7 +33,7 @@ def parse_arguments() -> argparse.Namespace:
         "--model", 
         type=str, 
         required=True, 
-        help="Path to the trained YOLOv8 weights (.pt)"
+        help="Path to the trained YOLO weights (.pt)"
     )
     parser.add_argument(
         "--conf-thresh", 
@@ -46,7 +46,7 @@ def parse_arguments() -> argparse.Namespace:
 
 
 def evaluate_video(video_path: str, output_path: str, model_path: str, conf_thresh: float) -> None:
-    """Runs YOLOv8 inference and saves the annotated video."""
+    """Runs YOLO inference and saves the annotated video."""
     
     # 1. Load Model
     try:
