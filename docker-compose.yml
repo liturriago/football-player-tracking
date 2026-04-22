@@ -1,0 +1,35 @@
+services:
+  tracker:
+    build: .
+    image: flag-football-tracker
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - ./data:/app/data         # input videos + radar template
+      - ./weights:/app/weights   # model weights (.pt and .onnx)
+    command: >
+      python sport_tracker_deepsort.py
+        --input  /app/data/test_1.mp4
+        --model  /app/weights/best.pt
+        --radar  /app/data/radar_template.png
+        --output /app/data/tactical_result.mp4
+        --start_frame 27
+        --num_players 10
+        --field_bot_visible 0.75,0.75
+        --embedder torchreid+hsv
+
+  onnx:
+    build: .
+    image: flag-football-tracker
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - ./data:/app/data
+      - ./weights:/app/weights
+    command: >
+      python onnx_inference.py
+        --model  /app/weights/best.onnx
+        --input  /app/data/test_1.mp4
+        --output /app/data/onnx_result.mp4

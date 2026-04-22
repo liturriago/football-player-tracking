@@ -1,0 +1,104 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Triton Inference Server — Model Configuration
+# Model: YOLO flag football player detector (ONNX)
+# File: model_repository/yolo_players/config.pbtxt
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Directory structure expected by Triton:
+#
+#   model_repository/
+#   └── yolo_players/
+#       ├── config.pbtxt          ← this file
+#       └── 1/
+#           └── model.onnx        ← rename best.onnx to model.onnx
+#
+# Launch Triton:
+#   docker run --gpus all --rm \
+#     -p 8000:8000 -p 8001:8001 -p 8002:8002 \
+#     -v $(pwd)/model_repository:/models \
+#     nvcr.io/nvidia/tritonserver:24.01-py3 \
+#     tritonserver --model-repository=/models
+#
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: "yolo_players"
+backend: "onnxruntime"
+max_batch_size: 8        # max frames per batch — tune to GPU VRAM
+
+# ── Input ────────────────────────────────────────────────────────────────────
+# Shape: [batch, channels, height, width]
+# dynamic=True at export means batch and spatial dims are dynamic (-1).
+# We fix imgsz=512 here to guide Triton's scheduler; adjust if needed.
+input [
+  {
+    name:     "images"
+    data_type: TYPE_FP16     # half=True at export
+    dims:     [ 3, 512, 512 ] # C, H, W — batch dim handled by max_batch_size
+  }
+]
+
+# ── Output ───────────────────────────────────────────────────────────────────
+# YOLO output with nms=False: raw predictions (cx, cy, w, h, cls_scores...)
+# Shape: [batch, 5+num_classes, num_anchors]
+output [
+  {
+    name:     "output0"
+    data_type: TYPE_FP16
+    dims:     [ -1, -1 ]     # dynamic: (5+nc, num_anchors) — both dynamic
+  }
+]
+
+# ── Instance groups (GPU deployment) ─────────────────────────────────────────
+# One model instance per GPU. For multi-GPU, add more entries.
+instance_group [
+  {
+    count: 1
+    kind:  KIND_GPU
+    gpus:  [ 0 ]
+  }
+]
+
+# ── Dynamic Batching ─────────────────────────────────────────────────────────
+# Triton aggregates requests arriving within the delay window into a single
+# batch, maximizing GPU utilization for live coaching (multiple camera feeds).
+dynamic_batching {
+  preferred_batch_size:     [ 1, 4, 8 ]
+  max_queue_delay_microseconds: 5000    # 5ms wait to fill batch
+                                        # increase to 10000 if latency allows
+}
+
+# ── ONNX Runtime optimization ─────────────────────────────────────────────────
+optimization {
+  execution_accelerators {
+    gpu_execution_accelerator [
+      {
+        name: "tensorrt"              # TRT compilation on first run (~2 min)
+        parameters {
+          key:   "precision_mode"
+          value: "FP16"               # matches half=True export
+        }
+        parameters {
+          key:   "max_workspace_size_bytes"
+          value: "1073741824"         # 1 GB TRT workspace
+        }
+      }
+    ]
+  }
+}
+
+# ── Model warmup ─────────────────────────────────────────────────────────────
+# Sends a dummy batch on startup so the first real request is not slow.
+model_warmup [
+  {
+    name:       "warmup_batch1"
+    batch_size: 1
+    inputs {
+      key:   "images"
+      value: {
+        data_type: TYPE_FP16
+        dims:      [ 3, 512, 512 ]
+        zero_data: true
+      }
+    }
+  }
+]

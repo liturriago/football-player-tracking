@@ -1,0 +1,20 @@
+# Core
+ultralytics==8.3.0
+opencv-python-headless==4.9.0.80
+numpy==1.26.4
+scipy==1.13.0
+
+# Tracking
+deep-sort-realtime==1.3.2
+
+# ONNX Runtime GPU
+onnxruntime-gpu==1.18.0
+
+# TorchReID (Task C — stronger Re-ID embedder)
+# GPU build of PyTorch — matches CUDA 11.8 in the base image
+torch==2.3.0+cu118
+torchvision==0.18.0+cu118
+--extra-index-url https://download.pytorch.org/whl/cu118
+torchreid==0.2.5
+gdown
+tensorboard
